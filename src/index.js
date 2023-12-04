@@ -15,7 +15,7 @@ const run = async () => {
     // await task6();
     // await task7();
     // await task8();
-    // await task9();
+     await task9();
     // await task10();
     // await task11();
     // await task12();
@@ -70,10 +70,10 @@ async function task2() {
     const usersResult = await usersCollection.updateMany({
       $or: [
         {
-          age: {$gte: 25, $lt: 30}
+          age: { $gte: 25, $lt: 30 }
         },
         {
-          tags: {$in: ['Engineering']}
+          tags: { $in: ['Engineering'] }
         },
       ],
     },
@@ -185,7 +185,42 @@ async function task7() {
 //   Pull ['tag2', 'tag1-a'] from all articles
 async function task8() {
   try {
+    const articlesCollection = db.collection("articles");
+    const articleTypes = ['a', 'b', 'c'];
 
+    await articlesCollection.bulkWrite(
+      articleTypes.map(type => ({
+        insertOne: {
+          document: {
+            type: type,
+            tags: []
+          }
+        }
+      }))
+    );
+
+    await articlesCollection.bulkWrite([
+      {
+        updateOne: {
+          filter: { type: 'a' },
+          update: { $set: { tags: ['tag1-a', 'tag2-a', 'tag3'] } }
+        }
+      },
+      {
+        updateMany: {
+          filter: { type: { $ne: 'a' } },
+          update: { $set: { tags: ['tag2', 'tag3', 'super'] } }
+
+        }
+      }
+    ]);
+
+    await articlesCollection.updateMany(
+      {},
+      { $pull: { tags: { $in: ['tag2', 'tag1-a'] } } }
+    );
+
+    console.log('Task 8 completed successfully.');
   } catch (err) {
     console.error('task8', err);
   }
@@ -194,7 +229,15 @@ async function task8() {
 // - Find all articles that contains tags 'super' or 'tag2-a'
 async function task9() {
   try {
+    const articlesCollection = db.collection('articles');
+    const articlesResult = await articlesCollection.find({
+      $or: [
+        {tags: 'super'},
+        {tags: 'tag2-a'}
+      ]
+    }).toArray();
 
+    console.log('Articles with tags "super" or "tag2-a":', articlesResult);
   } catch (err) {
     console.log('task9', err);
   }
@@ -205,15 +248,17 @@ async function task9() {
 async function task10() {
   try {
     const studentsResult = await studentsCollection.aggregate([
-      {$unwind: '$scores'},
-      {$match: {'scores.type': 'homework'}},
-      {$sort: {'scores.score': 1}},
-      {$limit: 1},
-      {$project:{
-        _id: 0,
-        name: 1,
-        worst_homework_score:"$scores.score"
-      }}
+      { $unwind: '$scores' },
+      { $match: { 'scores.type': 'homework' } },
+      { $sort: { 'scores.score': 1 } },
+      { $limit: 1 },
+      {
+        $project: {
+          _id: 0,
+          name: 1,
+          worst_homework_score: "$scores.score"
+        }
+      }
     ]).toArray();
     console.log('Student with the worst homework score:', studentsResult);
   } catch (err) {
@@ -225,16 +270,20 @@ async function task10() {
 async function task11() {
   try {
     const studentsResult = await studentsCollection.aggregate([
-      {$unwind: '$scores'},
-      {$match: {'scores.type': 'homework'}},
-      {$group: {
-      _id: null,
-        avg_score: {$avg: "$scores.score"}
-      }},
-      {$project:{
-        _id: 0,
-        avg_score:1
-      }}
+      { $unwind: '$scores' },
+      { $match: { 'scores.type': 'homework' } },
+      {
+        $group: {
+          _id: null,
+          avg_score: { $avg: "$scores.score" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          avg_score: 1
+        }
+      }
     ]).toArray();
 
     console.log('Average score for homework for all students:', studentsResult);
@@ -247,12 +296,14 @@ async function task11() {
 async function task12() {
   try {
     const studentsResult = await studentsCollection.aggregate([
-      {$unwind: '$scores'},
-      {$group: {
-        _id: '$name',
-        avg_score: {$avg:"$scores.score"}
-      }},
-      {$sort: {avg_score: -1}}
+      { $unwind: '$scores' },
+      {
+        $group: {
+          _id: '$name',
+          avg_score: { $avg: "$scores.score" }
+        }
+      },
+      { $sort: { avg_score: -1 } }
     ]).toArray();
 
     console.log('Average score by all types for each student:', studentsResult);
