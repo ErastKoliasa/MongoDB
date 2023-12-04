@@ -2,6 +2,7 @@ import { connect, close } from './connection.js';
 
 const db = await connect();
 const usersCollection = db.collection("users");
+const studentsCollection = db.collection("students");
 
 const run = async () => {
   try {
@@ -50,6 +51,7 @@ async function task1() {
       .limit(5)
       .project(
         {
+          _id: 0,
           firstName: 1,
           lastName: 1,
           age: 1
@@ -202,7 +204,18 @@ async function task9() {
 // - Find the student who have the worst score for homework, the result should be [ { name: <name>, worst_homework_score: <score> } ]
 async function task10() {
   try {
-
+    const studentsResult = await studentsCollection.aggregate([
+      {$unwind: '$scores'},
+      {$match: {'scores.type': 'homework'}},
+      {$sort: {'scores.score': 1}},
+      {$limit: 1},
+      {$project:{
+        _id: 0,
+        name: 1,
+        worst_homework_score:"$scores.score"
+      }}
+    ]).toArray();
+    console.log('Student with the worst homework score:', studentsResult);
   } catch (err) {
     console.log('task10', err);
   }
@@ -211,7 +224,20 @@ async function task10() {
 // - Calculate the average score for homework for all students, the result should be [ { avg_score: <number> } ]
 async function task11() {
   try {
+    const studentsResult = await studentsCollection.aggregate([
+      {$unwind: '$scores'},
+      {$match: {'scores.type': 'homework'}},
+      {$group: {
+      _id: null,
+        avg_score: {$avg: "$scores.score"}
+      }},
+      {$project:{
+        _id: 0,
+        avg_score:1
+      }}
+    ]).toArray();
 
+    console.log('Average score for homework for all students:', studentsResult);
   } catch (err) {
     console.log('task11', err);
   }
@@ -220,8 +246,18 @@ async function task11() {
 // - Calculate the average score by all types (homework, exam, quiz) for each student, sort from the largest to the smallest value
 async function task12() {
   try {
+    const studentsResult = await studentsCollection.aggregate([
+      {$unwind: '$scores'},
+      {$group: {
+        _id: '$name',
+        avg_score: {$avg:"$scores.score"}
+      }},
+      {$sort: {avg_score: -1}}
+    ]).toArray();
 
+    console.log('Average score by all types for each student:', studentsResult);
   } catch (err) {
     console.log('task12', err);
   }
 }
+
